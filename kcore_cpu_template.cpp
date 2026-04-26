@@ -32,8 +32,7 @@ CSRGraph build_csr_cpu(const parlay::sequence<Edge>& edges, int num_vertices) {
         auto start_it = std::lower_bound(sorted_edges.begin(), sorted_edges.end(), dummy_start, compare_edges);
         auto end_it = std::lower_bound(sorted_edges.begin(), sorted_edges.end(), dummy_end, compare_edges);
         
-        // TODO: Calculate the difference between end_it and start_it to find the degree
-        // degrees[i] = ...;
+        degrees[i] = (int)(end_it - start_it);
     });
     
     // -------------------------------------------------------------------------
@@ -47,16 +46,13 @@ CSRGraph build_csr_cpu(const parlay::sequence<Edge>& edges, int num_vertices) {
         graph.row_offsets[i] = offsets[i];
     });
     
-    // TODO: Set the very last element of row_offsets to the total number of edges
-    // graph.row_offsets[num_vertices] = ...;
+    graph.row_offsets[num_vertices] = total_edges;
     
     // -------------------------------------------------------------------------
     // 4. Column Indices Population
     // -------------------------------------------------------------------------
     parlay::parallel_for(0, graph.num_edges, [&](int i) {
-        // TODO: Map destination vertices `v` directly from sorted_edges 
-        // into graph.column_indices  
-        // graph.column_indices[i] = ...;
+        graph.column_indices[i] = sorted_edges[i].v;
     });
     
     return graph;

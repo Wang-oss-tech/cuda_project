@@ -12,8 +12,7 @@ __global__ void level_init_kernel(int num_vertices, int k, const int* d_degrees,
         // TODO: Check if vertex degree is below threshold `k` and is unpeeled
         if (d_degrees[id] <= k && d_coreness[id] == 0) {
             d_flags[id] = 1;
-            // TODO: Update d_coreness to track exactly which level this vertex fell into
-            // d_coreness[id] = ...;
+            d_coreness[id] = k;
         } else {
             d_flags[id] = 0;
         }
@@ -24,9 +23,7 @@ __global__ void compaction_kernel(int num_vertices, const int* d_flags, const in
     int id = blockIdx.x * blockDim.x + threadIdx.x;
     if (id < num_vertices) {
         if (d_flags[id] == 1) {
-            // TODO: Write vertex ID into proper offset of d_compacted_frontier
-            // int offset = d_frontier_offsets[id];
-            // d_compacted_frontier[...] = id;
+            d_compacted_frontier[d_frontier_offsets[id]] = id;
         }
     }
 }
@@ -47,8 +44,7 @@ __global__ void degree_updates_kernel(int num_active, const int* d_compacted_fro
             
             // Only decrement degree of neighbors that are completely unpeeled (coreness == 0)
             if (d_coreness[v] == 0) {
-                // TODO: atomicSub the degree of vertex `v` safely by 1
-                // atomicSub(..., 1);
+                atomicSub(&d_degrees[v], 1);
             }
         }
     }
@@ -117,11 +113,9 @@ void compute_kcore_gpu(const CSRGraph& h_G, int* h_coreness) {
             
             // STEP C: Check completion
             int last_flag, last_offset;
-            // TODO: Use cudaMemcpy to grab the VERY LAST element of `d_flags` and `d_frontier_offsets`
-            // to find out exactly how many vertices were flagged this round.
-            // cudaMemcpy(&last_flag, d_flags + (h_G.num_vertices - 1), ..., cudaMemcpyDeviceToHost);
-            // cudaMemcpy(&last_offset, d_frontier_offsets + (h_G.num_vertices - 1), ..., cudaMemcpyDeviceToHost);
-            
+            cudaMemcpy(&last_flag, d_flags + (h_G.num_vertices - 1), sizeof(int), cudaMemcpyDeviceToHost);
+            cudaMemcpy(&last_offset, d_frontier_offsets + (h_G.num_vertices - 1), sizeof(int), cudaMemcpyDeviceToHost);
+
             int num_frontier = last_flag + last_offset;
             if (num_frontier == 0) break; 
             
